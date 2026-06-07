@@ -1,6 +1,12 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const rewardPurchaseSchema = z.object({
+  itemId: z.string().min(1, "itemId is required"),
+  cost: z.number().int().positive("cost must be a positive integer"),
+});
 
 export async function GET() {
   try {
@@ -138,59 +144,78 @@ export async function POST(req: Request) {
     }
     const userId = session.user.id;
 
-    const { itemId, cost } = await req.json();
+    const body = await req.json();
+    const parsed = rewardPurchaseSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || "Validation failed" }, { status: 400 });
+    }
+    const { itemId, cost } = parsed.data;
 
-    if (!itemId || typeof cost !== "number" || cost <= 0) {
-      return NextResponse.json({ error: "Invalid itemId or cost" }, { status: 400 });
+    // Deduct points and log redemption transaction atomically using interactive transaction & row lock
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Row lock on the user's RewardPoints wallet to serialize concurrent requests for this user
+        await tx.$executeRaw`SELECT * FROM reward_points WHERE "userId" = ${userId} FOR UPDATE`;
+
+        // Check if already unlocked inside the locked context
+        const alreadyUnlocked = await tx.pointsTransaction.findFirst({
+          where: {
+            userId,
+            reason: "REDEMPTION",
+            description: itemId,
+          },
+        });
+
+        if (alreadyUnlocked) {
+          throw new Error("ALREADY_UNLOCKED");
+        }
+
+        // Fetch wallet inside the locked context
+        const wallet = await tx.rewardPoints.findUnique({
+          where: { userId },
+        });
+
+        if (!wallet || wallet.totalPoints < cost) {
+          throw new Error("INSUFFICIENT_POINTS");
+        }
+
+        // Deduct points
+        await tx.rewardPoints.update({
+          where: { userId },
+          data: {
+            totalPoints: { decrement: cost },
+          },
+        });
+
+        // Log transaction
+        await tx.pointsTransaction.create({
+          data: {
+            userId,
+            points: -cost,
+            reason: "REDEMPTION",
+            description: itemId,
+          },
+        });
+      });
+    } catch (txError: unknown) {
+      const message = txError instanceof Error ? txError.message : "";
+      if (message === "ALREADY_UNLOCKED") {
+        return NextResponse.json({ error: "Item is already unlocked" }, { status: 400 });
+      }
+      if (message === "INSUFFICIENT_POINTS") {
+        return NextResponse.json({ error: "Insufficient points" }, { status: 400 });
+      }
+      throw txError;
     }
 
-    // 1. Fetch user reward points wallet
-    const wallet = await prisma.rewardPoints.findUnique({
+    // Fetch final points balance for accurate response
+    const finalWallet = await prisma.rewardPoints.findUnique({
       where: { userId },
     });
 
-    const currentPoints = wallet?.totalPoints || 0;
-
-    if (currentPoints < cost) {
-      return NextResponse.json({ error: "Insufficient points" }, { status: 400 });
-    }
-
-    // 2. Check if already unlocked
-    const alreadyUnlocked = await prisma.pointsTransaction.findFirst({
-      where: {
-        userId,
-        reason: "REDEMPTION",
-        description: itemId,
-      },
-    });
-
-    if (alreadyUnlocked) {
-      return NextResponse.json({ error: "Item is already unlocked" }, { status: 400 });
-    }
-
-    // 3. Deduct points and log redemption transaction
-    await prisma.$transaction([
-      // Deduct from wallet (totalPoints decreases, lifetimePoints remains the same)
-      prisma.rewardPoints.update({
-        where: { userId },
-        data: {
-          totalPoints: { decrement: cost },
-        },
-      }),
-      // Log transaction
-      prisma.pointsTransaction.create({
-        data: {
-          userId,
-          points: -cost,
-          reason: "REDEMPTION",
-          description: itemId,
-        },
-      }),
-    ]);
-
     return NextResponse.json({
       success: true,
-      remainingPoints: currentPoints - cost,
+      remainingPoints: finalWallet?.totalPoints || 0,
     });
   } catch (error) {
     console.error("POST rewards API error:", error);

@@ -1,6 +1,11 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const profilePictureSchema = z.object({
+  image: z.string().url("Invalid image URL format").or(z.literal("")).or(z.null()).optional(),
+});
 
 export async function POST(req: Request) {
   try {
@@ -10,7 +15,12 @@ export async function POST(req: Request) {
     }
     const userId = session.user.id;
 
-    const { image } = await req.json();
+    const body = await req.json();
+    const parsed = profilePictureSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || "Validation failed" }, { status: 400 });
+    }
+    const { image } = parsed.data;
 
     // Scalability design: Updates the user record. If we migrate to S3/Supabase storage buckets later,
     // we can perform the file upload inside this handler and save the resulting URL in the DB here

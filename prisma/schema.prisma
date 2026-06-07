@@ -170,13 +170,14 @@ model Question {
 }
 
 model DailyTask {
-  id           String    @id @default(uuid())
-  userId       String
-  topicId      String
-  assignedDate DateTime  @db.Date
-  isCompleted  Boolean   @default(false)
-  completedAt  DateTime?
-  createdAt    DateTime  @default(now())
+  id                 String    @id @default(uuid())
+  userId             String
+  topicId            String
+  assignedDate       DateTime  @db.Date
+  isCompleted        Boolean   @default(false)
+  bonusPointsAwarded Boolean   @default(false)
+  completedAt        DateTime?
+  createdAt          DateTime  @default(now())
 
   // Relations
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -187,14 +188,16 @@ model DailyTask {
 }
 
 model TopicProgress {
-  id           String      @id @default(uuid())
-  userId       String
-  topicId      String
-  status       TopicStatus @default(NOT_STARTED)
-  averageScore Float       @default(0)
-  attemptCount Int         @default(0)
-  lastAttemptAt DateTime?
-  updatedAt    DateTime    @updatedAt
+  id                   String      @id @default(uuid())
+  userId               String
+  topicId              String
+  status               TopicStatus @default(NOT_STARTED)
+  averageScore         Float       @default(0)
+  attemptCount         Int         @default(0)
+  readingPointsAwarded Boolean     @default(false)
+  quizPointsAwarded    Boolean     @default(false)
+  lastAttemptAt        DateTime?
+  updatedAt            DateTime    @updatedAt
 
   // Relations
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)

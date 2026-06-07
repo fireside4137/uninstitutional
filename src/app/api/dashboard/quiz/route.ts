@@ -1,6 +1,12 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const quizSubmissionSchema = z.object({
+  topicId: z.string().min(1, "topicId is required"),
+  selectedAnswers: z.array(z.number().int().nullable().optional()),
+});
 
 export async function GET(req: Request) {
   try {
@@ -231,11 +237,12 @@ export async function POST(req: Request) {
     }
     const userId = session.user.id;
 
-    const { topicId, selectedAnswers } = await req.json();
-
-    if (!topicId || !Array.isArray(selectedAnswers)) {
-      return NextResponse.json({ error: "Missing topicId or selectedAnswers array" }, { status: 400 });
+    const body = await req.json();
+    const parsed = quizSubmissionSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
+    const { topicId, selectedAnswers } = parsed.data;
 
     // Fetch questions
     const questions = await prisma.question.findMany({
@@ -302,28 +309,10 @@ export async function POST(req: Request) {
       },
     });
 
-    // Determine points to award
-    // Standard quiz points: 10 points per correct answer
-    let earnedPoints = correctCount * 10;
-    let isDailyChallenge = false;
-
-    if (dailyTask) {
-      isDailyChallenge = true;
-      // Add +20 bonus points for completing the Daily Challenge
-      earnedPoints += 20;
-    }
-
-    // Update daily task status to completed if score is >= 60%
     const passed = scorePercent >= 60;
-    if (dailyTask && passed) {
-      await prisma.dailyTask.update({
-        where: { id: dailyTask.id },
-        data: {
-          isCompleted: true,
-          completedAt: new Date(),
-        },
-      });
-    }
+    let earnedPoints = 0;
+    let pointsAwardedReason: "QUIZ_COMPLETE" | "QUIZ_BONUS" | null = null;
+    const todayStr = assignedDate.toISOString().split("T")[0];
 
     // Fetch previous progress to aggregate
     const prevProgress = await prisma.topicProgress.findUnique({
@@ -361,6 +350,60 @@ export async function POST(req: Request) {
       },
     });
 
+    // 1. Check Standard Quiz completion points
+    if (passed) {
+      // Transition quizPointsAwarded atomically
+      const atomicQuizPoints = await prisma.topicProgress.updateMany({
+        where: {
+          userId,
+          topicId,
+          quizPointsAwarded: false,
+        },
+        data: {
+          quizPointsAwarded: true,
+        },
+      });
+
+      if (atomicQuizPoints.count === 1) {
+        earnedPoints += correctCount * 10;
+      } else {
+        console.warn(`[SECURITY WARN] Blocked duplicate quiz points-farming attempt for User ID: ${userId} on Topic: ${topicId}.`);
+      }
+    }
+
+    // 2. Check Daily Challenge bonus points
+    let dailyBonusPointsAwarded = false;
+    if (dailyTask && passed) {
+      // Transition bonusPointsAwarded atomically
+      const atomicDailyBonus = await prisma.dailyTask.updateMany({
+        where: {
+          id: dailyTask.id,
+          bonusPointsAwarded: false,
+        },
+        data: {
+          bonusPointsAwarded: true,
+          isCompleted: true,
+          completedAt: new Date(),
+        },
+      });
+
+      if (atomicDailyBonus.count === 1) {
+        earnedPoints += 20; // +20 points Daily Challenge Bonus
+        dailyBonusPointsAwarded = true;
+      } else {
+        console.warn(`[SECURITY WARN] Blocked duplicate daily challenge points-farming attempt for User ID: ${userId} on Date: ${todayStr}.`);
+      }
+    } else if (dailyTask && passed) {
+      // Mark DailyTask completed even if bonus points were already claimed
+      await prisma.dailyTask.update({
+        where: { id: dailyTask.id },
+        data: {
+          isCompleted: true,
+          completedAt: new Date(),
+        },
+      });
+    }
+
     // Award points
     if (earnedPoints > 0) {
       await prisma.rewardPoints.upsert({
@@ -376,18 +419,21 @@ export async function POST(req: Request) {
         },
       });
 
+      pointsAwardedReason = dailyBonusPointsAwarded ? "QUIZ_BONUS" : "QUIZ_COMPLETE";
       await prisma.pointsTransaction.create({
         data: {
           userId,
           points: earnedPoints,
-          reason: isDailyChallenge ? "QUIZ_BONUS" : "QUIZ_COMPLETE",
+          reason: pointsAwardedReason,
+          description: dailyBonusPointsAwarded 
+            ? `daily:${dailyTask?.id || ""}` 
+            : `quiz:${topicId}`,
         },
       });
     }
 
     // Update streak active date
     const streak = await prisma.streak.findUnique({ where: { userId } });
-    const todayStr = assignedDate.toISOString().split("T")[0];
 
     if (!streak) {
       await prisma.streak.create({

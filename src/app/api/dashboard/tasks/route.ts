@@ -1,6 +1,12 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const taskActionSchema = z.object({
+  topicId: z.string().min(1, "topicId is required"),
+  action: z.enum(["start_reading", "complete_reading", "toggle_completion"]),
+});
 
 export async function GET() {
   try {
@@ -172,15 +178,12 @@ export async function POST(req: Request) {
     }
     const userId = session.user.id;
 
-    const { topicId, action } = await req.json();
-
-    if (!topicId || !action) {
-      return NextResponse.json({ error: "Missing topicId or action" }, { status: 400 });
+    const body = await req.json();
+    const parsed = taskActionSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
-
-    if (action !== "start_reading" && action !== "complete_reading" && action !== "toggle_completion") {
-      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-    }
+    const { topicId, action } = parsed.data;
 
     // Check if the topic exists
     const topic = await prisma.topic.findUnique({
@@ -215,7 +218,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Upsert progress
+    // Ensure TopicProgress record exists (upsert)
     const progress = await prisma.topicProgress.upsert({
       where: {
         userId_topicId: { userId, topicId },
@@ -230,8 +233,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // If marked as completed now, check if it was previously not completed
-    const wasCompletedBefore = currentProgress?.status === "COMPLETED";
     const isCompletedNow = newStatus === "COMPLETED";
 
     // Update daily tasks for today if it matches this topic
@@ -258,73 +259,96 @@ export async function POST(req: Request) {
       });
     }
 
-    // If newly completed, award Task completion points
-    if (isCompletedNow && !wasCompletedBefore) {
-      earnedPoints = 15; // +15 Points for task completion
-
-      // Upsert RewardPoints wallet
-      await prisma.rewardPoints.upsert({
-        where: { userId },
-        update: {
-          totalPoints: { increment: earnedPoints },
-          lifetimePoints: { increment: earnedPoints },
-        },
-        create: {
+    // Atomic Point-Awarding Logic
+    if (isCompletedNow) {
+      // Transition readingPointsAwarded from false to true atomically
+      const atomicUpdate = await prisma.topicProgress.updateMany({
+        where: {
           userId,
-          totalPoints: earnedPoints,
-          lifetimePoints: earnedPoints,
+          topicId,
+          readingPointsAwarded: false,
         },
-      });
-
-      // Log transaction
-      await prisma.pointsTransaction.create({
         data: {
-          userId,
-          points: earnedPoints,
-          reason: "TASK_COMPLETE",
+          readingPointsAwarded: true,
+          status: "COMPLETED",
         },
       });
 
-      // Also trigger/update streak active date
-      const streak = await prisma.streak.findUnique({ where: { userId } });
-      const todayStr = assignedDate.toISOString().split("T")[0];
+      if (atomicUpdate.count === 1) {
+        earnedPoints = 15; // +15 Points for task completion
 
-      if (!streak) {
-        // Create new streak
-        await prisma.streak.create({
-          data: {
+        // Upsert RewardPoints wallet
+        await prisma.rewardPoints.upsert({
+          where: { userId },
+          update: {
+            totalPoints: { increment: earnedPoints },
+            lifetimePoints: { increment: earnedPoints },
+          },
+          create: {
             userId,
-            currentStreak: 1,
-            longestStreak: 1,
-            lastActiveDate: assignedDate,
+            totalPoints: earnedPoints,
+            lifetimePoints: earnedPoints,
           },
         });
-      } else {
-        const lastActiveStr = streak.lastActiveDate
-          ? streak.lastActiveDate.toISOString().split("T")[0]
-          : null;
 
-        if (lastActiveStr !== todayStr) {
-          let newStreak = streak.currentStreak;
-          const yesterday = new Date(assignedDate);
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split("T")[0];
+        // Log transaction
+        await prisma.pointsTransaction.create({
+          data: {
+            userId,
+            points: earnedPoints,
+            reason: "TASK_COMPLETE",
+            description: `topic:${topicId}`,
+          },
+        });
 
-          if (lastActiveStr === yesterdayStr) {
-            newStreak += 1;
-          } else {
-            // Streak broken, reset to 1
-            newStreak = 1;
-          }
+        // Also trigger/update streak active date
+        const streak = await prisma.streak.findUnique({ where: { userId } });
+        const todayStr = assignedDate.toISOString().split("T")[0];
 
-          await prisma.streak.update({
-            where: { userId },
+        if (!streak) {
+          // Create new streak
+          await prisma.streak.create({
             data: {
-              currentStreak: newStreak,
-              longestStreak: Math.max(newStreak, streak.longestStreak),
+              userId,
+              currentStreak: 1,
+              longestStreak: 1,
               lastActiveDate: assignedDate,
             },
           });
+        } else {
+          const lastActiveStr = streak.lastActiveDate
+            ? streak.lastActiveDate.toISOString().split("T")[0]
+            : null;
+
+          if (lastActiveStr !== todayStr) {
+            let newStreak = streak.currentStreak;
+            const yesterday = new Date(assignedDate);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+            if (lastActiveStr === yesterdayStr) {
+              newStreak += 1;
+            } else {
+              // Streak broken, reset to 1
+              newStreak = 1;
+            }
+
+            await prisma.streak.update({
+              where: { userId },
+              data: {
+                currentStreak: newStreak,
+                longestStreak: Math.max(newStreak, streak.longestStreak),
+                lastActiveDate: assignedDate,
+              },
+            });
+          }
+        }
+      } else {
+        const wasCompletedBefore = currentProgress?.status === "COMPLETED";
+        if (!wasCompletedBefore) {
+          console.warn(
+            `[SECURITY WARN] Blocked duplicate points-farming request for User ID: ${userId} completing Topic: ${topicId}.`
+          );
         }
       }
     }

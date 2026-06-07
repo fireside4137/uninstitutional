@@ -1,6 +1,12 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const bookmarkSchema = z.object({
+  itemId: z.string().min(1, "itemId is required"),
+  itemType: z.string().min(1, "itemType is required"),
+});
 
 export async function GET() {
   try {
@@ -30,10 +36,12 @@ export async function POST(req: Request) {
     }
     const userId = session.user.id;
 
-    const { itemId, itemType } = await req.json();
-    if (!itemId || !itemType) {
-      return NextResponse.json({ error: "Bad Request. Missing itemId or itemType." }, { status: 400 });
+    const body = await req.json();
+    const parsed = bookmarkSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
+    const { itemId, itemType } = parsed.data;
 
     // Check if the bookmark already exists
     const existing = await prisma.bookmark.findUnique({

@@ -2,12 +2,127 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+// --- Zod Validation Schemas ---
+const calendarSchema = z.object({
+  titleEn: z.string().min(1, "English Title is required"),
+  titleHi: z.string().min(1, "Hindi Title is required"),
+  examCategory: z.string().min(1, "Category is required"),
+  authorityEn: z.string().min(1, "English Authority is required"),
+  authorityHi: z.string().min(1, "Hindi Authority is required"),
+  formOpenDate: z.string().nullable().optional(),
+  formCloseDate: z.string().nullable().optional(),
+  examDate: z.string().nullable().optional(),
+  admitCardDate: z.string().nullable().optional(),
+  applyUrl: z.string().url().or(z.literal("")).nullable().optional(),
+  notificationUrl: z.string().url().or(z.literal("")).nullable().optional(),
+  status: z.string().optional(),
+});
+
+const linkSchema = z.object({
+  titleEn: z.string().min(1, "English Title is required"),
+  titleHi: z.string().min(1, "Hindi Title is required"),
+  url: z.string().url("Invalid URL format"),
+  authorityEn: z.string().min(1, "English Authority is required"),
+  authorityHi: z.string().min(1, "Hindi Authority is required"),
+  category: z.string().optional(),
+  isTrusted: z.boolean().optional(),
+});
+
+const notificationSchema = z.object({
+  titleEn: z.string().min(1, "English Title is required"),
+  titleHi: z.string().min(1, "Hindi Title is required"),
+  contentEn: z.string().nullable().optional(),
+  contentHi: z.string().nullable().optional(),
+  linkUrl: z.string().url().or(z.literal("")).nullable().optional(),
+  category: z.string().optional(),
+  isNew: z.boolean().optional(),
+  publishDate: z.string().nullable().optional(),
+});
+
+const answerkeySchema = z.object({
+  titleEn: z.string().min(1, "English Title is required"),
+  titleHi: z.string().min(1, "Hindi Title is required"),
+  examNameEn: z.string().min(1, "English Exam Name is required"),
+  examNameHi: z.string().min(1, "Hindi Exam Name is required"),
+  pdfUrl: z.string().url().or(z.literal("")).nullable().optional(),
+  officialLink: z.string().url().or(z.literal("")).nullable().optional(),
+  releaseDate: z.string().nullable().optional(),
+  isOfficial: z.boolean().optional(),
+});
+
+const mapSchema = z.object({
+  titleEn: z.string().min(1, "English Title is required"),
+  titleHi: z.string().min(1, "Hindi Title is required"),
+  descriptionEn: z.string().nullable().optional(),
+  descriptionHi: z.string().nullable().optional(),
+  imageUrl: z.string().url("Invalid Image URL format"),
+  pdfUrl: z.string().url().or(z.literal("")).nullable().optional(),
+  category: z.string().optional(),
+});
+
+const govtSchema = z.object({
+  titleEn: z.string().min(1, "English Title is required"),
+  titleHi: z.string().min(1, "Hindi Title is required"),
+  descriptionEn: z.string().nullable().optional(),
+  descriptionHi: z.string().nullable().optional(),
+  url: z.string().url("Invalid Swayam URL format"),
+  provider: z.string().optional(),
+  subjectEn: z.string().min(1, "English Subject is required"),
+  subjectHi: z.string().min(1, "Hindi Subject is required"),
+});
+
+const pyqSchema = z.object({
+  titleEn: z.string().min(1, "English Title is required"),
+  titleHi: z.string().min(1, "Hindi Title is required"),
+  examName: z.string().min(1, "Exam Name is required"),
+  examCategory: z.string().min(1, "Exam Category is required"),
+  year: z.union([z.number(), z.string()]),
+  pdfUrl: z.string().url().or(z.literal("")).nullable().optional(),
+  officialLink: z.string().url().or(z.literal("")).nullable().optional(),
+  subjectEn: z.string().nullable().optional(),
+  subjectHi: z.string().nullable().optional(),
+});
+
+const currentaffairsSchema = z.object({
+  titleEn: z.string().min(1, "English Headline is required"),
+  titleHi: z.string().min(1, "Hindi Headline is required"),
+  summaryEn: z.string().nullable().optional(),
+  summaryHi: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  sourceUrl: z.string().url().or(z.literal("")).nullable().optional(),
+  category: z.string().optional(),
+  eventDate: z.string().nullable().optional(),
+});
+
+const magazineSchema = z.object({
+  titleEn: z.string().min(1, "English Title is required"),
+  titleHi: z.string().min(1, "Hindi Title is required"),
+  descriptionEn: z.string().nullable().optional(),
+  descriptionHi: z.string().nullable().optional(),
+  url: z.string().url("Invalid Magazine URL format"),
+  type: z.string().optional(),
+  publishMonth: z.string().nullable().optional(),
+});
 
 export async function GET(req: Request) {
   try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    let isPremium = false;
+
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { isPremium: true },
+      });
+      isPremium = !!user?.isPremium;
+    }
+
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") || "all";
-    const category = searchParams.get("category"); // optional filter: e.g. "ukpsc" or "ukssc"
+    const category = searchParams.get("category");
 
     const data: Record<string, any> = {};
 
@@ -37,9 +152,16 @@ export async function GET(req: Request) {
     }
 
     if (type === "all" || type === "maps") {
-      data.maps = await prisma.mapResource.findMany({
+      const mapsData = await prisma.mapResource.findMany({
         orderBy: { createdAt: "desc" },
       });
+      data.maps = mapsData.map((m) => ({
+        ...m,
+        // Securely redact premium file download link, returning a proxy or null
+        pdfUrl: m.pdfUrl
+          ? (isPremium ? `/api/download?type=map&id=${m.id}` : null)
+          : null,
+      }));
     }
 
     if (type === "all" || type === "govt") {
@@ -49,10 +171,17 @@ export async function GET(req: Request) {
     }
 
     if (type === "all" || type === "pyqs") {
-      data.pyqs = await prisma.pYQPaper.findMany({
+      const pyqsData = await prisma.pYQPaper.findMany({
         where: category ? { examCategory: category.toUpperCase() } : undefined,
         orderBy: [{ year: "desc" }, { createdAt: "desc" }],
       });
+      data.pyqs = pyqsData.map((p) => ({
+        ...p,
+        // Securely redact premium file download link, returning a proxy or null
+        pdfUrl: p.pdfUrl
+          ? (isPremium ? `/api/download?type=pyq&id=${p.id}` : null)
+          : null,
+      }));
     }
 
     if (type === "all" || type === "currentaffairs") {
@@ -62,9 +191,16 @@ export async function GET(req: Request) {
     }
 
     if (type === "all" || type === "magazines") {
-      data.magazines = await prisma.magazineResource.findMany({
+      const magazinesData = await prisma.magazineResource.findMany({
         orderBy: { createdAt: "desc" },
       });
+      data.magazines = magazinesData.map((m) => ({
+        ...m,
+        // Securely redact premium file download link, returning a proxy or null
+        url: m.url
+          ? (isPremium ? `/api/download?type=magazine&id=${m.id}` : null)
+          : null,
+      }));
     }
 
     return NextResponse.json(data);
@@ -77,9 +213,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    // Verify user role is ADMIN
     const userRole = (session?.user as any)?.role;
+
     if (!session?.user?.id || userRole !== "ADMIN") {
+      console.warn(
+        `[SECURITY WARN] Unauthorized Admin Panel access attempt. User: ${session?.user?.name || "Unknown"} (ID: ${session?.user?.id || "Unauthenticated"})`
+      );
       return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
     }
 
@@ -88,26 +227,66 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Bad Request. Missing type or payload." }, { status: 400 });
     }
 
-    const creatorName = session.user.name || "Admin";
+    // --- Server-side Schema Validation with Zod ---
+    let validatedPayload: any;
+    try {
+      switch (type) {
+        case "calendar":
+          validatedPayload = calendarSchema.parse(payload);
+          break;
+        case "link":
+          validatedPayload = linkSchema.parse(payload);
+          break;
+        case "notification":
+          validatedPayload = notificationSchema.parse(payload);
+          break;
+        case "answerkey":
+          validatedPayload = answerkeySchema.parse(payload);
+          break;
+        case "map":
+          validatedPayload = mapSchema.parse(payload);
+          break;
+        case "govt":
+          validatedPayload = govtSchema.parse(payload);
+          break;
+        case "pyq":
+          validatedPayload = pyqSchema.parse(payload);
+          break;
+        case "currentaffairs":
+          validatedPayload = currentaffairsSchema.parse(payload);
+          break;
+        case "magazine":
+          validatedPayload = magazineSchema.parse(payload);
+          break;
+        default:
+          return NextResponse.json({ error: `Invalid information type: ${type}` }, { status: 400 });
+      }
+    } catch (validationError: any) {
+      return NextResponse.json(
+        { error: validationError.errors?.[0]?.message || "Validation failed for payload." },
+        { status: 400 }
+      );
+    }
 
+    const creatorName = session.user.name || "Admin";
     let result;
 
     switch (type) {
       case "calendar":
         result = await prisma.examEvent.create({
           data: {
-            titleEn: payload.titleEn,
-            titleHi: payload.titleHi,
-            examCategory: payload.examCategory.toUpperCase(),
-            authorityEn: payload.authorityEn,
-            authorityHi: payload.authorityHi,
-            formOpenDate: payload.formOpenDate ? new Date(payload.formOpenDate) : null,
-            formCloseDate: payload.formCloseDate ? new Date(payload.formCloseDate) : null,
-            examDate: payload.examDate ? new Date(payload.examDate) : null,
-            admitCardDate: payload.admitCardDate ? new Date(payload.admitCardDate) : null,
-            applyUrl: payload.applyUrl || null,
-            notificationUrl: payload.notificationUrl || null,
-            status: payload.status || "Upcoming",
+            titleEn: validatedPayload.titleEn,
+            titleHi: validatedPayload.titleHi,
+            examCategory: validatedPayload.examCategory.toUpperCase(),
+            authorityEn: validatedPayload.authorityEn,
+            authorityHi: validatedPayload.authorityHi,
+            formOpenDate: validatedPayload.formOpenDate ? new Date(validatedPayload.formOpenDate) : null,
+            formCloseDate: validatedPayload.formCloseDate ? new Date(validatedPayload.formCloseDate) : null,
+            examDate: validatedPayload.examDate ? new Date(validatedPayload.examDate) : null,
+            admitCardDate: validatedPayload.admitCardDate ? new Date(validatedPayload.admitCardDate) : null,
+            applyUrl: validatedPayload.applyUrl || null,
+            notificationUrl: validatedPayload.notificationUrl || null,
+            status: validatedPayload.status || "Upcoming",
             createdBy: creatorName,
           },
         });
@@ -116,13 +295,13 @@ export async function POST(req: Request) {
       case "link":
         result = await prisma.officialLink.create({
           data: {
-            titleEn: payload.titleEn,
-            titleHi: payload.titleHi,
-            url: payload.url,
-            authorityEn: payload.authorityEn,
-            authorityHi: payload.authorityHi,
-            category: payload.category || "Official Portal",
-            isTrusted: payload.isTrusted !== undefined ? payload.isTrusted : true,
+            titleEn: validatedPayload.titleEn,
+            titleHi: validatedPayload.titleHi,
+            url: validatedPayload.url,
+            authorityEn: validatedPayload.authorityEn,
+            authorityHi: validatedPayload.authorityHi,
+            category: validatedPayload.category || "Official Portal",
+            isTrusted: validatedPayload.isTrusted !== undefined ? validatedPayload.isTrusted : true,
             createdBy: creatorName,
           },
         });
@@ -131,14 +310,14 @@ export async function POST(req: Request) {
       case "notification":
         result = await prisma.notification.create({
           data: {
-            titleEn: payload.titleEn,
-            titleHi: payload.titleHi,
-            contentEn: payload.contentEn || null,
-            contentHi: payload.contentHi || null,
-            linkUrl: payload.linkUrl || null,
-            category: payload.category || "General",
-            isNew: payload.isNew !== undefined ? payload.isNew : true,
-            publishDate: payload.publishDate ? new Date(payload.publishDate) : new Date(),
+            titleEn: validatedPayload.titleEn,
+            titleHi: validatedPayload.titleHi,
+            contentEn: validatedPayload.contentEn || null,
+            contentHi: validatedPayload.contentHi || null,
+            linkUrl: validatedPayload.linkUrl || null,
+            category: validatedPayload.category || "General",
+            isNew: validatedPayload.isNew !== undefined ? validatedPayload.isNew : true,
+            publishDate: validatedPayload.publishDate ? new Date(validatedPayload.publishDate) : new Date(),
             createdBy: creatorName,
           },
         });
@@ -147,14 +326,14 @@ export async function POST(req: Request) {
       case "answerkey":
         result = await prisma.answerKey.create({
           data: {
-            titleEn: payload.titleEn,
-            titleHi: payload.titleHi,
-            examNameEn: payload.examNameEn,
-            examNameHi: payload.examNameHi,
-            pdfUrl: payload.pdfUrl || null,
-            officialLink: payload.officialLink || null,
-            releaseDate: payload.releaseDate ? new Date(payload.releaseDate) : new Date(),
-            isOfficial: payload.isOfficial !== undefined ? payload.isOfficial : true,
+            titleEn: validatedPayload.titleEn,
+            titleHi: validatedPayload.titleHi,
+            examNameEn: validatedPayload.examNameEn,
+            examNameHi: validatedPayload.examNameHi,
+            pdfUrl: validatedPayload.pdfUrl || null,
+            officialLink: validatedPayload.officialLink || null,
+            releaseDate: validatedPayload.releaseDate ? new Date(validatedPayload.releaseDate) : new Date(),
+            isOfficial: validatedPayload.isOfficial !== undefined ? validatedPayload.isOfficial : true,
             createdBy: creatorName,
           },
         });
@@ -163,13 +342,13 @@ export async function POST(req: Request) {
       case "map":
         result = await prisma.mapResource.create({
           data: {
-            titleEn: payload.titleEn,
-            titleHi: payload.titleHi,
-            descriptionEn: payload.descriptionEn || null,
-            descriptionHi: payload.descriptionHi || null,
-            imageUrl: payload.imageUrl,
-            pdfUrl: payload.pdfUrl || null,
-            category: payload.category || "District Maps",
+            titleEn: validatedPayload.titleEn,
+            titleHi: validatedPayload.titleHi,
+            descriptionEn: validatedPayload.descriptionEn || null,
+            descriptionHi: validatedPayload.descriptionHi || null,
+            imageUrl: validatedPayload.imageUrl,
+            pdfUrl: validatedPayload.pdfUrl || null,
+            category: validatedPayload.category || "District Maps",
             createdBy: creatorName,
           },
         });
@@ -178,14 +357,14 @@ export async function POST(req: Request) {
       case "govt":
         result = await prisma.govtLearningLink.create({
           data: {
-            titleEn: payload.titleEn,
-            titleHi: payload.titleHi,
-            descriptionEn: payload.descriptionEn || null,
-            descriptionHi: payload.descriptionHi || null,
-            url: payload.url,
-            provider: payload.provider || "SWAYAM",
-            subjectEn: payload.subjectEn,
-            subjectHi: payload.subjectHi,
+            titleEn: validatedPayload.titleEn,
+            titleHi: validatedPayload.titleHi,
+            descriptionEn: validatedPayload.descriptionEn || null,
+            descriptionHi: validatedPayload.descriptionHi || null,
+            url: validatedPayload.url,
+            provider: validatedPayload.provider || "SWAYAM",
+            subjectEn: validatedPayload.subjectEn,
+            subjectHi: validatedPayload.subjectHi,
             createdBy: creatorName,
           },
         });
@@ -194,15 +373,15 @@ export async function POST(req: Request) {
       case "pyq":
         result = await prisma.pYQPaper.create({
           data: {
-            titleEn: payload.titleEn,
-            titleHi: payload.titleHi,
-            examName: payload.examName,
-            examCategory: payload.examCategory.toUpperCase(),
-            year: parseInt(payload.year, 10),
-            pdfUrl: payload.pdfUrl || null,
-            officialLink: payload.officialLink || null,
-            subjectEn: payload.subjectEn || null,
-            subjectHi: payload.subjectHi || null,
+            titleEn: validatedPayload.titleEn,
+            titleHi: validatedPayload.titleHi,
+            examName: validatedPayload.examName,
+            examCategory: validatedPayload.examCategory.toUpperCase(),
+            year: typeof validatedPayload.year === "string" ? parseInt(validatedPayload.year, 10) : validatedPayload.year,
+            pdfUrl: validatedPayload.pdfUrl || null,
+            officialLink: validatedPayload.officialLink || null,
+            subjectEn: validatedPayload.subjectEn || null,
+            subjectHi: validatedPayload.subjectHi || null,
             createdBy: creatorName,
           },
         });
@@ -211,14 +390,14 @@ export async function POST(req: Request) {
       case "currentaffairs":
         result = await prisma.currentAffairsEvent.create({
           data: {
-            titleEn: payload.titleEn,
-            titleHi: payload.titleHi,
-            summaryEn: payload.summaryEn || null,
-            summaryHi: payload.summaryHi || null,
-            source: payload.source || null,
-            sourceUrl: payload.sourceUrl || null,
-            category: payload.category || "State",
-            eventDate: payload.eventDate ? new Date(payload.eventDate) : new Date(),
+            titleEn: validatedPayload.titleEn,
+            titleHi: validatedPayload.titleHi,
+            summaryEn: validatedPayload.summaryEn || null,
+            summaryHi: validatedPayload.summaryHi || null,
+            source: validatedPayload.source || null,
+            sourceUrl: validatedPayload.sourceUrl || null,
+            category: validatedPayload.category || "State",
+            eventDate: validatedPayload.eventDate ? new Date(validatedPayload.eventDate) : new Date(),
             createdBy: creatorName,
           },
         });
@@ -227,20 +406,17 @@ export async function POST(req: Request) {
       case "magazine":
         result = await prisma.magazineResource.create({
           data: {
-            titleEn: payload.titleEn,
-            titleHi: payload.titleHi,
-            descriptionEn: payload.descriptionEn || null,
-            descriptionHi: payload.descriptionHi || null,
-            url: payload.url,
-            type: payload.type || "Yojana",
-            publishMonth: payload.publishMonth || null,
+            titleEn: validatedPayload.titleEn,
+            titleHi: validatedPayload.titleHi,
+            descriptionEn: validatedPayload.descriptionEn || null,
+            descriptionHi: validatedPayload.descriptionHi || null,
+            url: validatedPayload.url,
+            type: validatedPayload.type || "Yojana",
+            publishMonth: validatedPayload.publishMonth || null,
             createdBy: creatorName,
           },
         });
         break;
-
-      default:
-        return NextResponse.json({ error: `Invalid information type: ${type}` }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, data: result });
