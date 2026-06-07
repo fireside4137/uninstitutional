@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logSecurityEvent } from "@/lib/securityLogger";
 
 const taskActionSchema = z.object({
   topicId: z.string().min(1, "topicId is required"),
@@ -346,9 +347,13 @@ export async function POST(req: Request) {
       } else {
         const wasCompletedBefore = currentProgress?.status === "COMPLETED";
         if (!wasCompletedBefore) {
-          console.warn(
-            `[SECURITY WARN] Blocked duplicate points-farming request for User ID: ${userId} completing Topic: ${topicId}.`
-          );
+          await logSecurityEvent({
+            userId,
+            eventType: "DUPLICATE_POINT_CLAIM",
+            severity: "HIGH",
+            route: "/api/dashboard/tasks",
+            metadata: { topicId, reason: "Topic progress reading points already awarded" }
+          });
         }
       }
     }

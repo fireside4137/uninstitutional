@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { logSecurityEvent } from "@/lib/securityLogger";
 
 export async function GET(req: Request) {
   try {
@@ -8,7 +9,16 @@ export async function GET(req: Request) {
     const userId = session?.user?.id;
 
     if (!userId) {
-      console.warn("[SECURITY WARN] Unauthenticated download attempt.");
+      await logSecurityEvent({
+        userId: null,
+        email: null,
+        eventType: "UNAUTHORIZED_PREMIUM_DOWNLOAD",
+        severity: "MEDIUM",
+        route: req.url,
+        metadata: {
+          error: "Unauthenticated download attempt"
+        }
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -23,13 +33,22 @@ export async function GET(req: Request) {
     // Verify user is premium
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { isPremium: true, name: true },
+      select: { isPremium: true, name: true, email: true },
     });
 
     if (!user || !user.isPremium) {
-      console.warn(
-        `[SECURITY WARN] Unauthorized premium download attempt. User: ${user?.name || "Unknown"} (ID: ${userId}) attempted to download resource type "${type}" with ID "${id}".`
-      );
+      await logSecurityEvent({
+        userId,
+        email: user?.email || null,
+        eventType: "UNAUTHORIZED_PREMIUM_DOWNLOAD",
+        severity: "HIGH",
+        route: req.url,
+        metadata: {
+          userName: user?.name || "Unknown",
+          resourceType: type,
+          resourceId: id
+        }
+      });
       return NextResponse.json(
         { error: "Forbidden. Premium subscription required to download offline resources." },
         { status: 403 }

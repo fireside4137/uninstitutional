@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logSecurityEvent } from "@/lib/securityLogger";
 
 const quizSubmissionSchema = z.object({
   topicId: z.string().min(1, "topicId is required"),
@@ -367,7 +368,13 @@ export async function POST(req: Request) {
       if (atomicQuizPoints.count === 1) {
         earnedPoints += correctCount * 10;
       } else {
-        console.warn(`[SECURITY WARN] Blocked duplicate quiz points-farming attempt for User ID: ${userId} on Topic: ${topicId}.`);
+        await logSecurityEvent({
+          userId,
+          eventType: "DUPLICATE_POINT_CLAIM",
+          severity: "HIGH",
+          route: "/api/dashboard/quiz",
+          metadata: { topicId, reason: "Topic progress quiz points already awarded" }
+        });
       }
     }
 
@@ -391,7 +398,13 @@ export async function POST(req: Request) {
         earnedPoints += 20; // +20 points Daily Challenge Bonus
         dailyBonusPointsAwarded = true;
       } else {
-        console.warn(`[SECURITY WARN] Blocked duplicate daily challenge points-farming attempt for User ID: ${userId} on Date: ${todayStr}.`);
+        await logSecurityEvent({
+          userId,
+          eventType: "DUPLICATE_POINT_CLAIM",
+          severity: "HIGH",
+          route: "/api/dashboard/quiz",
+          metadata: { dailyTaskId: dailyTask.id, date: todayStr, reason: "Daily challenge bonus points already awarded" }
+        });
       }
     } else if (dailyTask && passed) {
       // Mark DailyTask completed even if bonus points were already claimed

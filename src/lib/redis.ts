@@ -5,6 +5,9 @@ export const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
 });
 
+// Local in-memory cache for sliding-window rate limiting (used in development, offline testing, or when Upstash is missing)
+const memoryStore = new Map<string, number[]>();
+
 /**
  * Sliding window rate limiting helper
  * @param key Unique key identifier (e.g. rate-limit:IP:route or rate-limit:userId:route)
@@ -13,13 +16,31 @@ export const redis = new Redis({
  * @returns { success: boolean, limit: number, remaining: number }
  */
 export async function rateLimit(key: string, limit: number, windowSeconds: number) {
-  // If Upstash Redis configuration is missing, fail open to prevent breaking production
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    console.warn("[SECURITY WARN] Upstash Redis credentials missing. Rate limiter is disabled (failing open).");
+  const isMock = process.env.MOCK_REDIS === "true" || process.env.NODE_ENV === "development";
+  const redisConfigured = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+
+  // Fallback to local in-memory rate limiting in development/offline testing mode to ensure 429 testing works E2E
+  if (!redisConfigured || isMock) {
+    const now = Date.now();
+    const clearBefore = now - windowSeconds * 1000;
+
+    let timestamps = memoryStore.get(key) || [];
+    timestamps = timestamps.filter((t) => t > clearBefore);
+    timestamps.push(now);
+    memoryStore.set(key, timestamps);
+
+    const count = timestamps.length;
+    const remaining = Math.max(0, limit - count);
+    const success = count <= limit;
+
+    if (!redisConfigured) {
+      console.warn(`[SECURITY WARN] Upstash Redis missing. Rate limiter running on local in-memory fallback for key: ${key}`);
+    }
+
     return {
-      success: true,
+      success,
       limit,
-      remaining: 1,
+      remaining,
     };
   }
 
@@ -50,11 +71,25 @@ export async function rateLimit(key: string, limit: number, windowSeconds: numbe
     };
   } catch (error) {
     console.error("Redis rate limit error:", error);
-    // Fail open in case Upstash is down or token is misconfigured
+    // Hybrid approach: Fall back to local in-memory rate limiter if Upstash goes offline or is misconfigured, preventing complete bypass of rate limits.
+    console.warn(
+      `[SECURITY WARN] Redis connection failed. Falling back to local in-memory rate limiting for key: ${key}. Error: ${error instanceof Error ? error.message : String(error)}`
+    );
+
+    const clearBefore = now - windowSeconds * 1000;
+    let timestamps = memoryStore.get(key) || [];
+    timestamps = timestamps.filter((t) => t > clearBefore);
+    timestamps.push(now);
+    memoryStore.set(key, timestamps);
+
+    const count = timestamps.length;
+    const remaining = Math.max(0, limit - count);
+    const success = count <= limit;
+
     return {
-      success: true,
+      success,
       limit,
-      remaining: 1,
+      remaining,
     };
   }
 }

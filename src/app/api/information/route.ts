@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logSecurityEvent } from "@/lib/securityLogger";
 
 // --- Zod Validation Schemas ---
 const calendarSchema = z.object({
@@ -216,9 +217,16 @@ export async function POST(req: Request) {
     const userRole = (session?.user as any)?.role;
 
     if (!session?.user?.id || userRole !== "ADMIN") {
-      console.warn(
-        `[SECURITY WARN] Unauthorized Admin Panel access attempt. User: ${session?.user?.name || "Unknown"} (ID: ${session?.user?.id || "Unauthenticated"})`
-      );
+      await logSecurityEvent({
+        userId: session?.user?.id || null,
+        email: session?.user?.email || null,
+        eventType: "UNAUTHORIZED_ADMIN_ACCESS",
+        severity: "HIGH",
+        route: "/api/information",
+        metadata: {
+          userName: session?.user?.name || "Unknown",
+        },
+      });
       return NextResponse.json({ error: "Forbidden. Admin access required." }, { status: 403 });
     }
 
