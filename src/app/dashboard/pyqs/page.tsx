@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/providers/LangProvider";
+import BookmarkButton from "@/components/dashboard/BookmarkButton";
 
 export default function PYQsVaultPage() {
   const { lang } = useLang();
@@ -218,12 +219,12 @@ export default function PYQsVaultPage() {
                         </span>
                       )}
                     </div>
-                    <button
+                    <BookmarkButton
+                      isBookmarked={isBookmarked}
                       onClick={() => toggleBookmark(paper.id, "PYQPaper")}
-                      className="text-xs p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      {isBookmarked ? "⭐" : "☆"}
-                    </button>
+                      title={lang === "en" ? "Bookmark Paper" : "पेपर बुकमार्क करें"}
+                      className="p-1.5 border-0 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 shadow-none"
+                    />
                   </div>
 
                   <h4 className="font-sora text-sm font-extrabold text-slate-900 dark:text-white leading-snug">

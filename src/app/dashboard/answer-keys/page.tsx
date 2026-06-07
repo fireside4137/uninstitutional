@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/providers/LangProvider";
+import BookmarkButton from "@/components/dashboard/BookmarkButton";
 
 export default function AnswerKeysPage() {
   const { lang } = useLang();
@@ -145,12 +146,11 @@ export default function AnswerKeysPage() {
                 </div>
 
                 <div className="flex items-center gap-2.5 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
-                  <button
+                  <BookmarkButton
+                    isBookmarked={isBookmarked}
                     onClick={() => toggleBookmark(item.id, "AnswerKey")}
-                    className="text-xs p-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg"
-                  >
-                    {isBookmarked ? "⭐" : "☆"}
-                  </button>
+                    title={lang === "en" ? "Bookmark Key" : "कुंजी बुकमार्क करें"}
+                  />
                   {item.pdfUrl && (
                     <a
                       href={item.pdfUrl}

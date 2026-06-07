@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/providers/LangProvider";
+import BookmarkButton from "@/components/dashboard/BookmarkButton";
 
 export default function ResourcesHubPage() {
   const { lang } = useLang();
@@ -158,12 +159,12 @@ export default function ResourcesHubPage() {
                         className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300"
                       />
                       <div className="absolute top-2 right-2 flex gap-1.5">
-                        <button
+                        <BookmarkButton
+                          isBookmarked={isBookmarked}
                           onClick={() => toggleBookmark(map.id, "MapResource")}
-                          className="bg-white/95 dark:bg-slate-900/95 p-1.5 rounded-lg text-xs hover:bg-white transition-colors shadow-sm"
-                        >
-                          {isBookmarked ? "⭐" : "☆"}
-                        </button>
+                          title={lang === "en" ? "Bookmark Map" : "मानचित्र बुकमार्क करें"}
+                          className="p-1.5 border-0 bg-white/95 dark:bg-slate-900/95 shadow-sm hover:bg-white"
+                        />
                       </div>
                     </div>
 
@@ -242,12 +243,12 @@ export default function ResourcesHubPage() {
                         <span className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-extrabold px-2.5 py-0.5 rounded">
                           {item.provider}
                         </span>
-                        <button
+                        <BookmarkButton
+                          isBookmarked={isBookmarked}
                           onClick={() => toggleBookmark(item.id, "GovtLearningLink")}
-                          className="text-xs p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
-                        >
-                          {isBookmarked ? "⭐" : "☆"}
-                        </button>
+                          title={lang === "en" ? "Bookmark Lecture" : "कक्षा बुकमार्क करें"}
+                          className="p-1 border-0 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 shadow-none"
+                        />
                       </div>
 
                       <h4 className="font-sora text-sm font-extrabold text-slate-900 dark:text-white mb-2 leading-snug">
@@ -303,12 +304,12 @@ export default function ResourcesHubPage() {
                         <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded">
                           {mag.type}
                         </span>
-                        <button
+                        <BookmarkButton
+                          isBookmarked={isBookmarked}
                           onClick={() => toggleBookmark(mag.id, "MagazineResource")}
-                          className="text-xs p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
-                        >
-                          {isBookmarked ? "⭐" : "☆"}
-                        </button>
+                          title={lang === "en" ? "Bookmark Magazine" : "पत्रिका बुकमार्क करें"}
+                          className="p-1 border-0 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 shadow-none"
+                        />
                       </div>
 
                       <div className="w-full aspect-[4/5] bg-slate-100 dark:bg-slate-950 rounded-lg flex flex-col items-center justify-center border border-slate-200/50 dark:border-slate-800/50 mb-4 text-center p-3 relative overflow-hidden">

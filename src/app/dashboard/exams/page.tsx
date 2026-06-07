@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/providers/LangProvider";
+import BookmarkButton from "@/components/dashboard/BookmarkButton";
 
 export default function ExamsHubPage() {
   const { lang } = useLang();
@@ -159,13 +160,11 @@ export default function ExamsHubPage() {
                         {item.examCategory}
                       </span>
                       <div className="flex gap-2">
-                        <button
+                        <BookmarkButton
+                          isBookmarked={isBookmarked}
                           onClick={() => toggleBookmark(item.id, "ExamEvent")}
-                          className="text-xs p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                          title={lang === "en" ? "Bookmark" : "बुकमार्क"}
-                        >
-                          {isBookmarked ? "⭐" : "☆"}
-                        </button>
+                          title={lang === "en" ? "Bookmark Event" : "इवेंट बुकमार्क करें"}
+                        />
                       </div>
                     </div>
 
@@ -307,12 +306,12 @@ export default function ExamsHubPage() {
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <button
+                    <BookmarkButton
+                      isBookmarked={isBookmarked}
                       onClick={() => toggleBookmark(link.id, "OfficialLink")}
-                      className="text-xs p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      {isBookmarked ? "⭐" : "☆"}
-                    </button>
+                      title={lang === "en" ? "Bookmark Link" : "लिंक बुकमार्क करें"}
+                      className="p-1 border-0 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 shadow-none"
+                    />
                     <a
                       href={link.url}
                       target="_blank"

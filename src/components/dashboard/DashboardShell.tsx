@@ -89,12 +89,23 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         {/* Collapse Button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className={`absolute top-4 ${
-            isCollapsed ? "right-2" : "right-4"
-          } w-6 h-6 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm cursor-pointer z-50`}
+          className="absolute top-6 -right-3 w-6 h-6 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer z-50"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
-          {isCollapsed ? "▶" : "◀"}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`w-3.5 h-3.5 transition-transform duration-300 ${
+              isCollapsed ? "rotate-180" : ""
+            }`}
+          >
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
         </button>
 
         <Link 

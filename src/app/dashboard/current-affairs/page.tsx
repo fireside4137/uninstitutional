@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/providers/LangProvider";
+import BookmarkButton from "@/components/dashboard/BookmarkButton";
 
 export default function CurrentAffairsPage() {
   const { lang } = useLang();
@@ -152,12 +153,11 @@ export default function CurrentAffairsPage() {
                       })}
                     </span>
                   </div>
-                  <button
+                  <BookmarkButton
+                    isBookmarked={isBookmarked}
                     onClick={() => toggleBookmark(ev.id, "CurrentAffairsEvent")}
-                    className="text-xs p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >
-                    {isBookmarked ? "⭐" : "☆"}
-                  </button>
+                    title={lang === "en" ? "Bookmark News" : "समाचार बुकमार्क करें"}
+                  />
                 </div>
 
                 <h4 className="font-sora text-sm sm:text-base font-extrabold text-slate-900 dark:text-white mb-2 leading-snug">
