@@ -1,0 +1,457 @@
+// ================================================
+// UNINSTITUTIONAL — Prisma Schema
+// ================================================
+// After placing this file at: prisma/schema.prisma
+// Run: npx prisma db push
+// Then: npx prisma generate
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── ENUMS ─────────────────────────────────────────
+
+enum ExamType {
+  UKPSC
+  UKSSC
+}
+
+enum Language {
+  HINDI
+  ENGLISH
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum TopicStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum CorrectOption {
+  A
+  B
+  C
+  D
+}
+
+enum PointsReason {
+  LOGIN
+  TASK_COMPLETE
+  QUIZ_COMPLETE
+  QUIZ_BONUS
+  STREAK_BONUS
+  REDEMPTION
+}
+
+// ── MODELS ────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  phone         String?   @unique
+  passwordHash  String
+  examType      ExamType
+  language      Language  @default(ENGLISH)
+  role          UserRole  @default(STUDENT)
+  isVerified    Boolean   @default(false)
+  verifyToken   String?
+  resetToken    String?
+  resetTokenExp DateTime?
+  image         String?   @db.Text
+  isPremium     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  dailyTasks      DailyTask[]
+  topicProgress   TopicProgress[]
+  quizAttempts    QuizAttempt[]
+  streak          Streak?
+  rewardPoints    RewardPoints?
+  pointsHistory   PointsTransaction[]
+  bookmarks       Bookmark[]
+
+  @@map("users")
+}
+
+model Exam {
+  id          String   @id @default(uuid())
+  name        ExamType @unique
+  fullName    String
+  fullNameHi  String
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  subjects Subject[]
+
+  @@map("exams")
+}
+
+model Subject {
+  id         String   @id @default(uuid())
+  examId     String
+  name       String
+  nameHi     String
+  orderIndex Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  exam   Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  topics Topic[]
+
+  @@map("subjects")
+}
+
+model Topic {
+  id                 String   @id @default(uuid())
+  subjectId          String
+  title              String
+  titleHi            String
+  content            String?  @db.Text
+  contentHi          String?  @db.Text
+  orderIndex         Int      @default(0)
+  estimatedMinutes   Int      @default(15)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  subject       Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  questions     Question[]
+  dailyTasks    DailyTask[]
+  topicProgress TopicProgress[]
+  quizAttempts  QuizAttempt[]
+
+  @@map("topics")
+}
+
+model Question {
+  id            String        @id @default(uuid())
+  topicId       String
+  text          String        @db.Text
+  textHi        String?       @db.Text
+  optionA       String
+  optionAHi     String?
+  optionB       String
+  optionBHi     String?
+  optionC       String
+  optionCHi     String?
+  optionD       String
+  optionDHi     String?
+  correctOption CorrectOption
+  explanation   String?       @db.Text
+  explanationHi String?       @db.Text
+  difficulty    Difficulty    @default(MEDIUM)
+  isPYQ         Boolean       @default(false)
+  pyqYear       Int?
+  createdAt     DateTime      @default(now())
+
+  // Relations
+  topic           Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  attemptAnswers  AttemptAnswer[]
+
+  @@map("questions")
+}
+
+model DailyTask {
+  id           String    @id @default(uuid())
+  userId       String
+  topicId      String
+  assignedDate DateTime  @db.Date
+  isCompleted  Boolean   @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assignedDate])
+  @@map("daily_tasks")
+}
+
+model TopicProgress {
+  id           String      @id @default(uuid())
+  userId       String
+  topicId      String
+  status       TopicStatus @default(NOT_STARTED)
+  averageScore Float       @default(0)
+  attemptCount Int         @default(0)
+  lastAttemptAt DateTime?
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+  @@map("topic_progress")
+}
+
+model QuizAttempt {
+  id               String   @id @default(uuid())
+  userId           String
+  topicId          String
+  score            Float
+  totalQuestions   Int
+  correctCount     Int
+  timeTakenSeconds Int      @default(0)
+  completedAt      DateTime @default(now())
+
+  // Relations
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic   Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  answers AttemptAnswer[]
+
+  @@map("quiz_attempts")
+}
+
+model AttemptAnswer {
+  id               String        @id @default(uuid())
+  attemptId        String
+  questionId       String
+  selectedOption   CorrectOption?
+  isCorrect        Boolean
+  timeTakenSeconds Int           @default(0)
+
+  // Relations
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("attempt_answers")
+}
+
+model Streak {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  currentStreak  Int      @default(0)
+  longestStreak  Int      @default(0)
+  lastActiveDate DateTime? @db.Date
+  streakFreezes  Int      @default(1)
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("streaks")
+}
+
+model RewardPoints {
+  id             String @id @default(uuid())
+  userId         String @unique
+  totalPoints    Int    @default(0)
+  lifetimePoints Int    @default(0)
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reward_points")
+}
+
+model PointsTransaction {
+  id          String       @id @default(uuid())
+  userId      String
+  points      Int
+  reason      PointsReason
+  description String?
+  createdAt   DateTime     @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("points_transactions")
+}
+
+model Bookmark {
+  id        String   @id @default(uuid())
+  userId    String
+  itemType  String   // "ExamEvent", "PYQPaper", "MapResource", "OfficialLink", "GovtLearningLink"
+  itemId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemType, itemId])
+  @@map("bookmarks")
+}
+
+model ExamEvent {
+  id              String    @id @default(uuid())
+  titleEn         String
+  titleHi         String
+  examCategory    String    // e.g. "UKPSC", "UKSSC", "UPSC", "SSC", "Banking", "Railways"
+  authorityEn     String
+  authorityHi     String
+  formOpenDate    DateTime?
+  formCloseDate   DateTime?
+  examDate        DateTime?
+  admitCardDate   DateTime?
+  applyUrl        String?
+  notificationUrl String?
+  status          String    // "Upcoming", "Applications Open", "Closing Soon", "Closed", "Exam Completed"
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String?
+  updatedBy       String?
+
+  @@map("exam_events")
+}
+
+model OfficialLink {
+  id          String   @id @default(uuid())
+  titleEn     String
+  titleHi     String
+  url         String
+  authorityEn String
+  authorityHi String
+  category    String   // "Official Portal", "Results", "Admit Card", "Recruitment"
+  isTrusted   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  updatedBy   String?
+
+  @@map("official_links")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  titleEn     String
+  titleHi     String
+  contentEn   String?  @db.Text
+  contentHi   String?  @db.Text
+  linkUrl     String?
+  category    String   // "General", "Admit Card", "Results", "Answer Key"
+  isNew       Boolean  @default(true)
+  publishDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  updatedBy   String?
+
+  @@map("notifications")
+}
+
+model AnswerKey {
+  id           String   @id @default(uuid())
+  titleEn      String
+  titleHi      String
+  examNameEn   String
+  examNameHi   String
+  pdfUrl       String?
+  officialLink String?
+  releaseDate  DateTime @default(now())
+  isOfficial   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String?
+  updatedBy    String?
+
+  @@map("answer_keys")
+}
+
+model MapResource {
+  id            String   @id @default(uuid())
+  titleEn       String
+  titleHi       String
+  descriptionEn String?  @db.Text
+  descriptionHi String?  @db.Text
+  imageUrl      String   @db.Text
+  pdfUrl        String?
+  category      String   // "District Maps", "River Maps", "Geography Maps", "Cultural Maps"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  updatedBy     String?
+
+  @@map("map_resources")
+}
+
+model GovtLearningLink {
+  id            String   @id @default(uuid())
+  titleEn       String
+  titleHi       String
+  descriptionEn String?
+  descriptionHi String?
+  url           String
+  provider      String   // "SWAYAM", "NPTEL", "IGNOU", "DIKSHA"
+  subjectEn     String
+  subjectHi     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  updatedBy     String?
+
+  @@map("govt_learning_links")
+}
+
+model PYQPaper {
+  id           String   @id @default(uuid())
+  titleEn      String
+  titleHi      String
+  examName     String   // e.g. "RO/ARO", "VDO", "Executive Officer"
+  examCategory String   // "UKPSC", "UKSSC", "SSC", "UPSC"
+  year         Int
+  pdfUrl       String?
+  officialLink String?
+  subjectEn    String?
+  subjectHi    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String?
+  updatedBy    String?
+
+  @@map("pyq_papers")
+}
+
+model CurrentAffairsEvent {
+  id          String   @id @default(uuid())
+  titleEn     String
+  titleHi     String
+  summaryEn   String?  @db.Text
+  summaryHi   String?  @db.Text
+  source      String?  // "PIB", "Uttarakhand Govt portal", "Daily Hunt"
+  sourceUrl   String?
+  category    String   // "State", "National", "International", "Sports", "Schemes"
+  eventDate   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  updatedBy   String?
+
+  @@map("current_affairs_events")
+}
+
+model MagazineResource {
+  id            String   @id @default(uuid())
+  titleEn       String
+  titleHi       String
+  descriptionEn String?
+  descriptionHi String?
+  url           String
+  type          String   // "Yojana", "Kurukshetra", "India Year Book", "Monthly Digest"
+  publishMonth  String?  // e.g. "May 2026"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  updatedBy     String?
+
+  @@map("magazine_resources")
+}
