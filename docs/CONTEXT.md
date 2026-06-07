@@ -1,6 +1,6 @@
 # UNINSTITUTIONAL — Project Context
 
-> **Last Updated:** Session 8 (Freemium Gating & Simulated Billing)
+> **Last Updated:** Session 10 (Production-Level Security V2 & Supabase RLS)
 > **Update this file** every time: a major decision is made, a feature is completed, a tech choice is finalized, or a new session begins.
 
 ---
@@ -115,6 +115,24 @@
  - [ ] Paid test series module (for future expansion)
  - [ ] Admin panel for content management (Expanded via Moderator Control Panel)
 
+ ### Phase 5 — Production-Level Security (Completed)
+ - [x] Renamed middleware.ts to proxy.ts and implemented sliding-window rate-limiting
+ - [x] Built secure /api/download route tunnel for premium assets
+ - [x] Created atomic point-farming protections on tasks, quizzes, and daily task bonuses
+ - [x] Implemented PostgreSQL row locks (SELECT FOR UPDATE) on rewards redemption
+ - [x] Secured administrative endpoints with server-side validations and Zod schemas
+ - [x] Injected secure headers (Frame Options: DENY, HSTS, X-Content-Type-Options: nosniff) in Next.js config
+ - [x] Added persistent database-backed SecurityLog engine with recursion metadata redaction
+ - [x] Implemented resilient hybrid in-memory rate-limiter fallback when Upstash is offline
+ - [x] Built protected admin diagnostic health endpoint at /api/admin/health
+
+ ### Phase 6 — Database Row Level Security (RLS) (Completed)
+ - [x] Enabled RLS on all 23 database tables in Supabase
+ - [x] Configured user-ownership policies on user profiles, tasks, attempts, progress, wallets, transactions, and bookmarks
+ - [x] Configured public read-only policies on exams, topics, announcements, links, notifications, and answer keys
+ - [x] Revoked SELECT privileges on premium URL columns for public anon/authenticated roles to prevent PostgREST REST API leaks
+ - [x] Verified Next.js server-side Prisma ORM connection compatibility
+
 ---
 
 ## 5. Key Decisions Log
@@ -146,6 +164,7 @@ dashboard/layout.tsx, dashboard/page.tsx |
 | Session 7 | Information Engine Integration | Created 9 new PG database models via Prisma and Supabase. Integrated unified dynamic API route `/api/information` for GET/POST queries. Created 7 new frontend pages (`exams`, `resources`, `pyqs`, `current-affairs`, `answer-keys`, `notifications`, `admin`). Added widgets to dashboard page, updated navigation with desktop/mobile separation, fixed sidebar cutoff layout issues, verified linter (0 errors/0 warnings), and built Next.js application successfully. |
 | Session 8 | Freemium Gating, Simulated Billing & UI Polish | Added `isPremium` to the PostgreSQL `User` model, created upgrade API `/api/user/upgrade`, added gold `👑 PRO` header badges in `DashboardShell.tsx`, and implemented gated resource overlays across maps, magazines, and PYQ vault pages. Redesigned the sidebar collapse button to feature a centering border position with an animating SVG chevron icon. Created a reusable animated `BookmarkButton` with a gold star spring-pop animation class inside `globals.css` and integrated it across all bookmarks tables. Resolved ESLint warnings and verified production compile checks successfully. |
 | Session 9 | Production-Level Security | Renamed deprecated `middleware.ts` to `proxy.ts`. Added Upstash Redis sliding window rate-limiting matching client userId on authenticated paths (and fallback IP lookup on unauthenticated paths). Created `/api/download` gated download tunnel verifying premium status. Secured tasks completions, quizzes submissions, and daily challenge points-farming with atomic boolean check flags. Secured rewards purchases with row locks (`SELECT FOR UPDATE`) to prevent simultaneous double-redeem exploits. Secured admin POST routes with server-side validations. Added Zod schema validations for bookmarks, tasks, quizzes, rewards, and profiles. Injected secure headers (HSTS, XSS protection, Frame Options) in `next.config.ts`. Verified environment variables gitignore compliance. Compiled Next.js successfully (0 lint errors/0 compiler warnings). |
+| Session 10 | Security Hardening Pass V2 & Row Level Security (RLS) | Implemented database-backed persistent `SecurityLog` utility with recursive metadata credentials/secrets filter checks. Integrated logging across admin routes, task completions, quiz submissions, and file download tunnels. Replaced rate limiting fail-open catch logic with resilient hybrid fallback, routing requests to local in-memory sliding window cache when Upstash Redis is offline. Created secure `/api/admin/health` diagnostics API. Enabled Supabase RLS on all 23 database tables, defining strict user-ownership policies on private tables, select-only policies on platform metadata, and revoking column select privileges on premium URL links for public roles. Checked ESLint (0 errors) and compiled production build successfully. |
 
 ---
 
