@@ -58,39 +58,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           examType: user.examType,
           language: user.language,
           role: user.role,
-          image: user.image,
+          isPremium: user.isPremium,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      // On first login, attach extra fields to token
+    async jwt({ token, user }) {
+      // On first login, attach only minimal fields to token — NO image/Base64
       if (user) {
         token.id = user.id;
-        const u = user as { examType?: string; language?: string; role?: string; image?: string | null };
+        const u = user as { examType?: string; language?: string; role?: string; isPremium?: boolean };
         token.examType = u.examType;
         token.language = u.language;
         token.role = u.role;
-        token.picture = u.image;
-      }
-      // Support session updates
-      if (trigger === "update" && session) {
-        if (session.image !== undefined) {
-          token.picture = session.image;
-        }
+        token.isPremium = u.isPremium;
+        // Explicitly clear picture to prevent any adapter from injecting it
+        token.picture = undefined;
       }
       return token;
     },
     async session({ session, token }) {
-      // Expose token fields to session
+      // Expose token fields to session — NO image
       if (token && session.user) {
         session.user.id = token.id as string;
-        const sUser = session.user as { examType?: unknown; language?: unknown; role?: unknown; image?: string | null };
+        const sUser = session.user as { examType?: unknown; language?: unknown; role?: unknown; isPremium?: unknown; image?: string | null };
         sUser.examType = token.examType;
         sUser.language = token.language;
         sUser.role = token.role;
-        sUser.image = token.picture as string | null;
+        sUser.isPremium = token.isPremium;
+        sUser.image = null; // Never store image in session — fetched from API instead
       }
       return session;
     },
