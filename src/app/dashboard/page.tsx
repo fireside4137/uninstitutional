@@ -58,6 +58,51 @@ const t = {
   },
 };
 
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+
+        const MAX_WIDTH = 400;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        resolve(dataUrl);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 export default function DashboardPage() {
   const { lang } = useLang();
   const tr = t[lang];
@@ -103,13 +148,22 @@ export default function DashboardPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    if (!file.type.startsWith("image/")) {
-      setErrorMsg(lang === "en" ? "Please select a valid image file." : "कृपया एक मान्य छवि फ़ाइल चुनें।");
+    const validMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!validMimeTypes.includes(file.type)) {
+      setErrorMsg(
+        lang === "en" 
+          ? "Only JPG, PNG, and WEBP images are allowed." 
+          : "केवल JPG, PNG और WEBP छवियों की अनुमति है।"
+      );
       return;
     }
     
     if (file.size > 1.5 * 1024 * 1024) {
-      setErrorMsg(lang === "en" ? "Image size should be less than 1.5MB." : "छवि का आकार 1.5MB से कम होना चाहिए।");
+      setErrorMsg(
+        lang === "en" 
+          ? "Image size should be less than 1.5MB." 
+          : "छवि का आकार 1.5MB से कम होना चाहिए।"
+      );
       return;
     }
 
@@ -117,45 +171,50 @@ export default function DashboardPage() {
     setErrorMsg("");
     setSuccessMsg("");
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      try {
-        const res = await fetch("/api/user/profile-picture", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: base64 }),
-        });
+    try {
+      const base64 = await compressImage(file);
+      const res = await fetch("/api/user/profile-picture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64 }),
+      });
 
-        if (res.ok) {
-          const d = await res.json();
-          setData((prev: any) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              user: {
-                ...prev.user,
-                image: d.image,
-              },
-            };
-          });
-          setSuccessMsg(lang === "en" ? "Profile picture updated successfully!" : "प्रोफ़ाइल फ़ोटो सफलतापूर्वक अपडेट हो गई!");
-          window.dispatchEvent(new Event("profile-updated"));
-        } else {
-          setErrorMsg(lang === "en" ? "Failed to upload image." : "छवि अपलोड करने में विफल।");
-        }
-      } catch (err) {
-        console.error(err);
-        setErrorMsg(lang === "en" ? "An error occurred." : "एक त्रुटि हुई।");
-      } finally {
-        setUploading(false);
+      if (res.ok) {
+        const d = await res.json();
+        setData((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            user: {
+              ...prev.user,
+              image: d.image,
+            },
+          };
+        });
+        setSuccessMsg(
+          lang === "en" 
+            ? "Profile picture updated successfully!" 
+            : "प्रोफ़ाइल फ़ोटो सफलतापूर्वक अपडेट हो गई!"
+        );
+        window.dispatchEvent(new Event("profile-updated"));
+      } else {
+        const d = await res.json();
+        setErrorMsg(
+          lang === "en" 
+            ? d.error || "Failed to upload image." 
+            : d.error || "छवि अपलोड करने में विफल।"
+        );
       }
-    };
-    reader.onerror = () => {
-      setErrorMsg(lang === "en" ? "Failed to read file." : "फ़ाइल पढ़ने में विफल।");
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(
+        lang === "en" 
+          ? "An error occurred." 
+          : "एक त्रुटि हुई।"
+      );
+    } finally {
       setUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleRemovePhoto = async () => {

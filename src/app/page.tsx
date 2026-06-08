@@ -221,15 +221,18 @@ export default function LandingPage() {
                 <svg viewBox="0 0 200 200" className="w-full h-full fill-current">
                   <circle cx="100" cy="100" r="95" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="6 3" />
                   <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="1" />
-                  <path d="M30 140 L70 90 L105 125 L145 75 L180 140 Z" fill="currentColor" opacity="0.3" />
-                  <path d="M50 140 L90 100 L120 128 L155 85 L175 140 Z" fill="currentColor" opacity="0.5" />
-                  <circle cx="120" cy="80" r="15" fill="currentColor" opacity="0.4" />
-                  <line x1="120" y1="55" x2="120" y2="45" stroke="currentColor" strokeWidth="2" opacity="0.4" />
-                  <line x1="102" y1="63" x2="95" y2="56" stroke="currentColor" strokeWidth="2" opacity="0.4" />
-                  <line x1="95" y1="80" x2="85" y2="80" stroke="currentColor" strokeWidth="2" opacity="0.4" />
-                  <line x1="138" y1="63" x2="145" y2="56" stroke="currentColor" strokeWidth="2" opacity="0.4" />
-                  <line x1="145" y1="80" x2="155" y2="80" stroke="currentColor" strokeWidth="2" opacity="0.4" />
-                  <circle cx="100" cy="100" r="75" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 4" />
+                  {/* Himalayan peaks in background */}
+                  <path d="M 20,110 L 60,60 L 100,110 M 70,110 L 115,45 L 160,110 M 130,110 L 165,70 L 200,110" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.25" />
+                  {/* Official building dome and columns */}
+                  <path d="M 85,75 A 15,15 0 0,1 115,75 Z" fill="currentColor" opacity="0.4" />
+                  <polygon points="75,80 100,68 125,80" fill="currentColor" opacity="0.5" />
+                  <rect x="75" y="80" width="50" height="4" fill="currentColor" opacity="0.5" />
+                  <rect x="78" y="84" width="4" height="24" fill="currentColor" opacity="0.4" />
+                  <rect x="90" y="84" width="4" height="24" fill="currentColor" opacity="0.4" />
+                  <rect x="106" y="84" width="4" height="24" fill="currentColor" opacity="0.4" />
+                  <rect x="118" y="84" width="4" height="24" fill="currentColor" opacity="0.4" />
+                  <rect x="70" y="108" width="60" height="4" fill="currentColor" opacity="0.5" />
+                  <rect x="65" y="112" width="70" height="4" fill="currentColor" opacity="0.6" />
                   <text x="100" y="170" textAnchor="middle" fontSize="22" fontWeight="900" letterSpacing="3" fontFamily="var(--font-sora), sans-serif">UKPSC</text>
                 </svg>
               </div>
@@ -279,9 +282,17 @@ export default function LandingPage() {
                 <svg viewBox="0 0 200 200" className="w-full h-full fill-current">
                   <polygon points="100,5 182,52 182,148 100,195 18,148 18,52" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 3" />
                   <polygon points="100,10 174,55 174,145 100,190 26,145 26,55" fill="none" stroke="currentColor" strokeWidth="1" />
-                  <path d="M35 130 L75 90 L110 120 L145 80 L170 130 Z" fill="currentColor" opacity="0.3" />
-                  <path d="M100 65 L100 135 M80 80 L120 80 M80 80 L100 105 L120 80" fill="none" stroke="currentColor" strokeWidth="2.5" opacity="0.5" />
-                  <path d="M90 120 L97 127 L115 110" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+                  {/* Clipboard structure with checks and lines */}
+                  <rect x="65" y="45" width="70" height="90" rx="8" fill="none" stroke="currentColor" strokeWidth="3" opacity="0.3" />
+                  <rect x="85" y="37" width="30" height="12" rx="3" fill="currentColor" opacity="0.5" />
+                  <circle cx="100" cy="32" r="3" fill="currentColor" opacity="0.5" />
+                  {/* Checkmarks & Document lines */}
+                  <path d="M 75,69 L 79,73 L 86,65" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+                  <line x1="92" y1="69" x2="125" y2="69" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
+                  <path d="M 75,89 L 79,93 L 86,85" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+                  <line x1="92" y1="89" x2="125" y2="89" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
+                  <path d="M 75,109 L 79,113 L 86,105" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+                  <line x1="92" y1="109" x2="125" y2="109" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
                   <text x="100" y="165" textAnchor="middle" fontSize="22" fontWeight="900" letterSpacing="3" fontFamily="var(--font-sora), sans-serif">UKSSC</text>
                 </svg>
               </div>

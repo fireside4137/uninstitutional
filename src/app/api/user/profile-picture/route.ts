@@ -4,7 +4,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const profilePictureSchema = z.object({
-  image: z.string().url("Invalid image URL format").or(z.literal("")).or(z.null()).optional(),
+  image: z.string()
+    .refine((val) => {
+      if (val.startsWith("http://") || val.startsWith("https://")) {
+        return true;
+      }
+      return /^data:image\/(jpeg|jpg|png|webp);base64,/.test(val);
+    }, "Invalid image format. Only JPG, PNG, and WEBP are supported.")
+    .or(z.literal(""))
+    .or(z.null())
+    .optional(),
 });
 
 export async function POST(req: Request) {
