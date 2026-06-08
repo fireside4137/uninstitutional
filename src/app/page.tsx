@@ -47,6 +47,7 @@ const translations = {
     stats_disclaimer: "*Platform beta metrics & projections",
     footer_tagline: "Padho. Apni Tarah.",
     footer_copy: "© 2026 UnInstitutional. Made with ♥ for Uttarakhand.",
+    footer_privacy: "Privacy Policy",
   },
   hi: {
     nav_home: "होम",
@@ -91,6 +92,7 @@ const translations = {
     stats_disclaimer: "*प्लेटफ़ॉर्म बीटा मेट्रिक्स और अनुमान",
     footer_tagline: "पढ़ो। अपनी तरह।",
     footer_copy: "© 2026 UnInstitutional। उत्तराखंड के लिए ♥ से बना।",
+    footer_privacy: "गोपनीयता नीति",
   },
 };
 
@@ -380,6 +382,9 @@ export default function LandingPage() {
           <p className="text-xs text-slate-400 font-medium">
             {t.footer_copy}
           </p>
+          <Link href="/privacy" className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors">
+            {t.footer_privacy}
+          </Link>
         </div>
       </footer>
 

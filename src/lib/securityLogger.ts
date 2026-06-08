@@ -8,7 +8,11 @@ export type SecurityEventType =
   | "RATE_LIMIT_HIT"
   | "DUPLICATE_POINT_CLAIM"
   | "INVALID_ADMIN_PAYLOAD"
-  | "AUTH_FAILURE";
+  | "AUTH_FAILURE"
+  | "DATA_EXPORT_REQUESTED"
+  | "ACCOUNT_DELETION_REQUESTED"
+  | "ACCOUNT_DELETED"
+  | "ACCOUNT_DELETION_FAILED";
 
 interface LogParams {
   userId?: string | null;

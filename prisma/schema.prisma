@@ -75,6 +75,8 @@ model User {
   resetTokenExp DateTime?
   image         String?   @db.Text
   isPremium     Boolean   @default(false)
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -476,6 +478,10 @@ enum SecurityEventType {
   DUPLICATE_POINT_CLAIM
   INVALID_ADMIN_PAYLOAD
   AUTH_FAILURE
+  DATA_EXPORT_REQUESTED
+  ACCOUNT_DELETION_REQUESTED
+  ACCOUNT_DELETED
+  ACCOUNT_DELETION_FAILED
 }
 
 model SecurityLog {

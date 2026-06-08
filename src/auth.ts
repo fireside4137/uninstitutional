@@ -40,6 +40,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user) return null;
         if (!user.isVerified) return null;
+        if (user.isDeleted) return null;
 
         // Verify that the user's exam matches the portal they are logging into
         if (examPortal && user.examType !== examPortal) {

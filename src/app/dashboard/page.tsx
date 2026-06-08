@@ -3,6 +3,8 @@
 
 import { useLang } from "@/components/providers/LangProvider";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 
 const t = {
@@ -106,6 +108,7 @@ const compressImage = (file: File): Promise<string> => {
 export default function DashboardPage() {
   const { lang } = useLang();
   const tr = t[lang];
+  const router = useRouter();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -116,6 +119,12 @@ export default function DashboardPage() {
   const [uploading, setUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  // Privacy & Data state
+  const [exportLoading, setExportLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/dashboard/summary")
@@ -313,6 +322,63 @@ export default function DashboardPage() {
 
   const examColor = user.examType === "UKPSC" ? "#1D4ED8" : "#059669";
   const examBg = user.examType === "UKPSC" ? "#EFF6FF" : "#ECFDF5";
+
+  const handleExportData = async () => {
+    setExportLoading(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+    try {
+      const res = await fetch("/api/user/export-data");
+      if (!res.ok) {
+        setErrorMsg(lang === "en" ? "Failed to export data." : "डेटा निर्यात करने में विफल।");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const dateStr = new Date().toISOString().split("T")[0];
+      a.download = `uninstitutional-my-data-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setSuccessMsg(lang === "en" ? "Data exported successfully!" : "डेटा सफलतापूर्वक निर्यात हो गया!");
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(lang === "en" ? "An error occurred while exporting data." : "डेटा निर्यात करते समय एक त्रुटि हुई।");
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteInput !== "DELETE") return;
+    setDeleteLoading(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/user/delete-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: "DELETE" }),
+      });
+      if (res.ok) {
+        setShowDeleteConfirm(false);
+        setShowSettings(false);
+        // Sign out and redirect to landing page
+        await signOut({ redirect: false });
+        router.push("/");
+      } else {
+        const d = await res.json();
+        setErrorMsg(d.error || (lang === "en" ? "Failed to delete account." : "खाता हटाने में विफल।"));
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(lang === "en" ? "An error occurred." : "एक त्रुटि हुई।");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const hour = new Date().getHours();
   const greeting =
@@ -768,6 +834,136 @@ export default function DashboardPage() {
                 className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
               >
                 {lang === "en" ? "Close" : "बंद करें"}
+              </button>
+            </div>
+
+            {/* ── Privacy & Data Section ── */}
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-2 space-y-3">
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  🔒 {lang === "en" ? "Privacy & Data" : "गोपनीयता और डेटा"}
+                </h4>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                  {lang === "en" ? "Manage your personal data and privacy preferences." : "अपने व्यक्तिगत डेटा और गोपनीयता प्राथमिकताओं को प्रबंधित करें।"}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {/* View Privacy Policy */}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  className="w-full py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs transition-colors text-center no-underline flex items-center justify-center gap-1.5"
+                >
+                  📄 {lang === "en" ? "View Privacy Policy" : "गोपनीयता नीति देखें"}
+                </Link>
+
+                {/* Export My Data */}
+                <button
+                  onClick={handleExportData}
+                  disabled={exportLoading}
+                  className="w-full py-2 rounded-xl border border-blue-200 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  {exportLoading ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      {lang === "en" ? "Downloading data..." : "डेटा डाउनलोड हो रहा है..."}
+                    </>
+                  ) : (
+                    <>
+                      📥 {lang === "en" ? "Export My Data" : "मेरा डेटा निर्यात करें"}
+                    </>
+                  )}
+                </button>
+
+                {/* Delete Account */}
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(true);
+                    setDeleteInput("");
+                    setErrorMsg("");
+                  }}
+                  className="w-full py-2 rounded-xl border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  ⚠️ {lang === "en" ? "Delete Account" : "खाता हटाएं"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Account Confirmation Modal ── */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4 transition-colors duration-300 relative text-left">
+            {/* Close */}
+            <button
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDeleteInput("");
+                setErrorMsg("");
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors font-bold text-base cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="text-center space-y-3">
+              <span className="text-4xl block">⚠️</span>
+              <h3 className="text-lg font-bold text-red-600 dark:text-red-400 font-sora">
+                {lang === "en" ? "Delete Your Account?" : "अपना खाता हटाएं?"}
+              </h3>
+              <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl p-3 text-xs text-red-600 dark:text-red-400 font-semibold leading-relaxed text-left space-y-1">
+                <p>{lang === "en" ? "This action cannot be undone. Your account will be permanently deleted and all personal information will be anonymized." : "यह कार्रवाई पूर्ववत नहीं की जा सकती। आपका खाता स्थायी रूप से हटा दिया जाएगा और सभी व्यक्तिगत जानकारी अनामिक कर दी जाएगी।"}</p>
+                <p>{lang === "en" ? "You will lose: your profile, learning progress, quiz history, reward points, streaks, and bookmarks." : "आप खो देंगे: अपनी प्रोफ़ाइल, अध्ययन प्रगति, क्विज़ इतिहास, इनाम अंक, स्ट्रीक, और बुकमार्क।"}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                {lang === "en" ? "Type DELETE to confirm:" : "पुष्टि के लिए DELETE टाइप करें:"}
+              </label>
+              <input
+                type="text"
+                value={deleteInput}
+                onChange={(e) => setDeleteInput(e.target.value)}
+                placeholder="DELETE"
+                className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-slate-800 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-300 dark:placeholder-slate-600 outline-none transition-all focus:ring-4 focus:ring-red-100/50 dark:focus:ring-red-900/30 focus:border-red-400"
+                autoComplete="off"
+              />
+            </div>
+
+            {errorMsg && (
+              <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-center text-xs font-semibold">
+                ⚠️ {errorMsg}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteInput("");
+                  setErrorMsg("");
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                {lang === "en" ? "Cancel" : "रद्द करें"}
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteInput !== "DELETE" || deleteLoading}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-sm shadow-red-200 dark:shadow-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              >
+                {deleteLoading ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {lang === "en" ? "Deleting..." : "हटाया जा रहा है..."}
+                  </>
+                ) : (
+                  <>{lang === "en" ? "Confirm Delete" : "हटाने की पुष्टि करें"}</>
+                )}
               </button>
             </div>
           </div>
