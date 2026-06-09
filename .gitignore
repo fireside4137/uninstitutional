@@ -41,3 +41,11 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# documents
+
+docs/SECURITY_VERIFICATION_REPORT*.md
+docs/RLS_SECURITY_REPORT.md
+docs/PRIVACY_FEATURES_VERIFICATION.md
+docs/CONTEXT.md
+docs/RLS_IMPLEMENTATION_PLAN.md
