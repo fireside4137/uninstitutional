@@ -112,6 +112,7 @@ model Subject {
   examId     String
   name       String
   nameHi     String
+  paper      String?  // Classifies subject under "PAPER_1" or "PAPER_2"
   orderIndex Int      @default(0)
   createdAt  DateTime @default(now())
 

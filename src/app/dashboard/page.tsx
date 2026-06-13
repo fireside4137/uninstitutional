@@ -414,31 +414,7 @@ export default function DashboardPage() {
         <p style={{ fontSize: 14, color: "#64748B" }}>{tr.sub}</p>
       </div>
 
-      {/* Streak + Points row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "1.25rem" }}>
-        {/* Streak */}
-        <Link href="/dashboard/rewards" style={{ textDecoration: "none" }}>
-          <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 14, padding: "1rem", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: "#FFF7ED", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🔥</div>
-            <div>
-              <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 700, color: "#F59E0B", lineHeight: 1 }}>{user.streak}</div>
-              <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2, fontWeight: 500 }}>{tr.streak_label}</div>
-            </div>
-          </div>
-        </Link>
-        {/* Points */}
-        <Link href="/dashboard/rewards" style={{ textDecoration: "none" }}>
-          <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 14, padding: "1rem", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: "#F0FDF4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>⭐</div>
-            <div>
-              <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 700, color: "#059669", lineHeight: 1 }}>{user.points}</div>
-              <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2, fontWeight: 500 }}>{tr.points_label}</div>
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Today's Task card */}
+      {/* Today's Mission card — primary learner action */}
       {dailyTask ? (
         <div style={{ background: "#fff", border: `1.5px solid ${examColor}22`, borderRadius: 16, padding: "1.25rem", marginBottom: "1.25rem", position: "relative", overflow: "hidden" }}>
           {/* Accent bar */}
@@ -498,6 +474,30 @@ export default function DashboardPage() {
           <p style={{ fontSize: 13, fontWeight: 600, color: "#64748B", marginTop: 8 }}>{tr.no_task}</p>
         </div>
       )}
+
+      {/* Streak + Points row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "1.25rem" }}>
+        {/* Streak */}
+        <Link href="/dashboard/rewards" style={{ textDecoration: "none" }}>
+          <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 14, padding: "1rem", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: "#FFF7ED", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🔥</div>
+            <div>
+              <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 700, color: "#F59E0B", lineHeight: 1 }}>{user.streak}</div>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2, fontWeight: 500 }}>{tr.streak_label}</div>
+            </div>
+          </div>
+        </Link>
+        {/* Points */}
+        <Link href="/dashboard/rewards" style={{ textDecoration: "none" }}>
+          <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 14, padding: "1rem", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: "#F0FDF4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>⭐</div>
+            <div>
+              <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 700, color: "#059669", lineHeight: 1 }}>{user.points}</div>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2, fontWeight: 500 }}>{tr.points_label}</div>
+            </div>
+          </div>
+        </Link>
+      </div>
 
       {/* Progress */}
       <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: "1.25rem", marginBottom: "1.25rem" }}>
