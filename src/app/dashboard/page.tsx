@@ -128,7 +128,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetch("/api/dashboard/summary")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        return res.json();
+      })
       .then((d) => {
         setData(d);
         setLoading(false);

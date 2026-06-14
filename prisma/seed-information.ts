@@ -1027,7 +1027,7 @@ async function seedMagazines() {
         "Kurukshetra is the Ministry of Rural Development's monthly magazine covering agriculture, rural schemes, Panchayati Raj, and village economy. Important for UKPSC Paper 1 — Agriculture and Rural Uttarakhand questions.",
       descriptionHi:
         "कुरुक्षेत्र ग्रामीण विकास मंत्रालय की मासिक पत्रिका है जो कृषि, ग्रामीण योजनाएं, पंचायती राज और ग्रामीण अर्थव्यवस्था को कवर करती है। UKPSC पेपर 1 के लिए महत्वपूर्ण।",
-      url: "https://kurukshetra.nic.in",
+      url: "https://www.publicationsdivision.nic.in/journals/index.php?route=page/kurukshetra",
       type: "Kurukshetra",
       publishMonth: "Latest Issue",
     },
