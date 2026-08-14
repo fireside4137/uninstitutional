@@ -19,10 +19,15 @@ export default function PYQsVaultPage() {
   const [activeSubject, setActiveSubject] = useState("ALL");
 
   useEffect(() => {
+    const safeJson = (res: Response) => {
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      return res.json();
+    };
+
     Promise.all([
-      fetch("/api/information?type=pyqs").then((res) => res.json()),
-      fetch("/api/bookmarks").then((res) => res.json()),
-      fetch("/api/dashboard/summary").then((res) => res.json()),
+      fetch("/api/information?type=pyqs").then(safeJson),
+      fetch("/api/bookmarks").then(safeJson),
+      fetch("/api/dashboard/summary").then(safeJson),
     ])
       .then(([pyqsData, bookmarksData, summaryData]) => {
         setPyqs(pyqsData.pyqs || []);

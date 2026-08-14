@@ -20,14 +20,20 @@ export default function ResourcesHubPage() {
   const [mapCategory, setMapCategory] = useState("ALL");
   // Zoomed Map Modal
   const [zoomedMap, setZoomedMap] = useState<any | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
 
   useEffect(() => {
+    const safeJson = (res: Response) => {
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      return res.json();
+    };
+
     Promise.all([
-      fetch("/api/information?type=maps").then((res) => res.json()),
-      fetch("/api/information?type=govt").then((res) => res.json()),
-      fetch("/api/information?type=magazines").then((res) => res.json()),
-      fetch("/api/bookmarks").then((res) => res.json()),
-      fetch("/api/dashboard/summary").then((res) => res.json()),
+      fetch("/api/information?type=maps").then(safeJson),
+      fetch("/api/information?type=govt").then(safeJson),
+      fetch("/api/information?type=magazines").then(safeJson),
+      fetch("/api/bookmarks").then(safeJson),
+      fetch("/api/dashboard/summary").then(safeJson),
     ])
       .then(([mapsData, govtData, magazinesData, bookmarksData, summaryData]) => {
         setMaps(mapsData.maps || []);
@@ -154,8 +160,12 @@ export default function ResourcesHubPage() {
                     <div className="relative aspect-video bg-slate-100 dark:bg-slate-950 overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={map.imageUrl}
+                        src={map.imageUrl || "/resources/maps/placeholder.svg"}
                         alt={map.titleEn}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = "/resources/maps/placeholder.svg";
+                        }}
                         className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300"
                       />
                       <div className="absolute top-2 right-2 flex gap-1.5">
@@ -183,7 +193,10 @@ export default function ResourcesHubPage() {
 
                       <div className="flex gap-2 pt-2">
                         <button
-                          onClick={() => setZoomedMap(map)}
+                          onClick={() => {
+                            setZoomedMap(map);
+                            setZoomScale(1.0);
+                          }}
                           className="flex-1 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold hover:bg-blue-100/70 transition-colors cursor-pointer"
                         >
                           🔍 {lang === "en" ? "View Large" : "बड़ा देखें"}
@@ -366,13 +379,13 @@ export default function ResourcesHubPage() {
             {/* Close Button */}
             <button
               onClick={() => setZoomedMap(null)}
-              className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-200 z-10 cursor-pointer"
+              className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-200 z-30 cursor-pointer"
             >
               ✕
             </button>
 
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 pr-12">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 pr-12 bg-white dark:bg-slate-900 z-10">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                 {zoomedMap.category}
               </span>
@@ -382,13 +395,60 @@ export default function ResourcesHubPage() {
             </div>
 
             {/* Large Image Scrollable Container */}
-            <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950 p-4 flex items-center justify-center min-h-[300px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={zoomedMap.imageUrl}
-                alt={zoomedMap.titleEn}
-                className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-sm"
-              />
+            <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950 p-8 flex items-center justify-center min-h-[350px] relative">
+              <div 
+                className="transition-transform duration-200 ease-out origin-center flex items-center justify-center" 
+                style={{ transform: `scale(${zoomScale})` }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={zoomedMap.imageUrl || "/resources/maps/placeholder.svg"}
+                  alt={zoomedMap.titleEn}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = "/resources/maps/placeholder.svg";
+                  }}
+                  className="max-h-[55vh] max-w-full object-contain rounded-lg shadow-sm"
+                />
+              </div>
+
+              {/* Floating Zoom Controls Toolbar */}
+              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-full shadow-xl z-20 transition-all hover:scale-105">
+                <button 
+                  onClick={() => setZoomScale((prev) => Math.max(prev - 0.25, 0.5))} 
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-850 font-bold transition-colors cursor-pointer text-sm"
+                  title="Zoom Out"
+                >
+                  —
+                </button>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-350 min-w-[48px] text-center font-mono select-none">
+                  {Math.round(zoomScale * 100)}%
+                </span>
+                <button 
+                  onClick={() => setZoomScale((prev) => Math.min(prev + 0.25, 4.0))} 
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-850 font-bold transition-colors cursor-pointer text-sm"
+                  title="Zoom In"
+                >
+                  ＋
+                </button>
+                <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 mx-1" />
+                <button 
+                  onClick={() => setZoomScale(1.0)} 
+                  className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer uppercase tracking-wider"
+                  title="Reset Zoom"
+                >
+                  Fit
+                </button>
+                <a 
+                  href={zoomedMap.imageUrl || "/resources/maps/placeholder.svg"} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors flex items-center gap-1 cursor-pointer uppercase tracking-wider"
+                  title="Open Original Image in New Tab"
+                >
+                  Original ↗
+                </a>
+              </div>
             </div>
 
             {/* Modal Footer */}

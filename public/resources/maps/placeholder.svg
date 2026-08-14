@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EFF6FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#DBEAFE;stop-opacity:1" />
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#BFDBFE" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg)"/>
+  <rect width="800" height="500" fill="url(#grid)"/>
+  <!-- Decorative landmass shapes -->
+  <path d="M 120,80 Q 200,60 320,90 Q 420,110 500,80 Q 600,50 700,100 L 720,420 Q 600,440 480,410 Q 360,380 240,420 Q 160,440 100,400 Z" fill="#93C5FD" opacity="0.3"/>
+  <path d="M 200,120 Q 280,100 380,130 Q 460,150 540,120 Q 620,95 700,130 L 700,380 Q 580,400 460,370 Q 340,340 240,370 Q 180,385 200,120 Z" fill="#60A5FA" opacity="0.2"/>
+  <!-- Map pin icon -->
+  <circle cx="400" cy="210" r="40" fill="#2563EB" opacity="0.15"/>
+  <path d="M 400 170 C 378 170 360 188 360 210 C 360 240 400 270 400 270 C 400 270 440 240 440 210 C 440 188 422 170 400 170 Z" fill="#2563EB"/>
+  <circle cx="400" cy="208" r="12" fill="white"/>
+  <!-- Text -->
+  <text x="400" y="310" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="700" fill="#1E40AF">Map Resource</text>
+  <text x="400" y="335" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#3B82F6">Uploaded image will appear here</text>
+  <text x="400" y="360" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#93C5FD">Reference: Wikimedia Commons / Official Source</text>
+  <!-- Border accent -->
+  <rect x="1" y="1" width="798" height="498" fill="none" stroke="#BFDBFE" stroke-width="2" rx="4"/>
+</svg>

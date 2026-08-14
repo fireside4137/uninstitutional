@@ -112,6 +112,7 @@ model Subject {
   examId     String
   name       String
   nameHi     String
+  paper      String?  // Classifies subject under "PAPER_1" or "PAPER_2"
   orderIndex Int      @default(0)
   createdAt  DateTime @default(now())
 
@@ -333,6 +334,7 @@ model OfficialLink {
   updatedAt   DateTime @updatedAt
   createdBy   String?
   updatedBy   String?
+  status      String   @default("PUBLISHED")
 
   @@map("official_links")
 }
@@ -351,6 +353,7 @@ model Notification {
   updatedAt   DateTime @updatedAt
   createdBy   String?
   updatedBy   String?
+  status      String   @default("PUBLISHED")
 
   @@map("notifications")
 }
@@ -369,6 +372,7 @@ model AnswerKey {
   updatedAt    DateTime @updatedAt
   createdBy    String?
   updatedBy    String?
+  status       String   @default("PUBLISHED")
 
   @@map("answer_keys")
 }
@@ -379,13 +383,14 @@ model MapResource {
   titleHi       String
   descriptionEn String?  @db.Text
   descriptionHi String?  @db.Text
-  imageUrl      String   @db.Text
+  imageUrl      String?  @db.Text
   pdfUrl        String?
   category      String   // "District Maps", "River Maps", "Geography Maps", "Cultural Maps"
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   createdBy     String?
   updatedBy     String?
+  status        String   @default("PUBLISHED")
 
   @@map("map_resources")
 }
@@ -404,6 +409,7 @@ model GovtLearningLink {
   updatedAt     DateTime @updatedAt
   createdBy     String?
   updatedBy     String?
+  status        String   @default("PUBLISHED")
 
   @@map("govt_learning_links")
 }
@@ -423,6 +429,7 @@ model PYQPaper {
   updatedAt    DateTime @updatedAt
   createdBy    String?
   updatedBy    String?
+  status       String   @default("PUBLISHED")
 
   @@map("pyq_papers")
 }
@@ -441,6 +448,7 @@ model CurrentAffairsEvent {
   updatedAt   DateTime @updatedAt
   createdBy   String?
   updatedBy   String?
+  status      String   @default("PUBLISHED")
 
   @@map("current_affairs_events")
 }
@@ -458,6 +466,7 @@ model MagazineResource {
   updatedAt     DateTime @updatedAt
   createdBy     String?
   updatedBy     String?
+  status        String   @default("PUBLISHED")
 
   @@map("magazine_resources")
 }
@@ -482,6 +491,12 @@ enum SecurityEventType {
   ACCOUNT_DELETION_REQUESTED
   ACCOUNT_DELETED
   ACCOUNT_DELETION_FAILED
+  ADMIN_CONTENT_CREATED
+  ADMIN_CONTENT_EDITED
+  ADMIN_CONTENT_DELETED
+  ADMIN_USER_PROMOTED
+  ADMIN_USER_DEMOTED
+  ADMIN_USER_CREATED
 }
 
 model SecurityLog {
